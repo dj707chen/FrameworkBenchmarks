@@ -97,6 +97,19 @@ _canonicalize_file_path() {
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_ROOT="$(dirname "$SCRIPT_PATH")"
 
+# If Docker desktop is not running, open it and wait until it is ready
+if (! docker stats --no-stream ); then
+  # On Mac OS this would be the terminal command to launch Docker
+  open /Applications/Docker.app
+  # open -a Docker
+  #Wait until Docker daemon is running and has completed initialisation
+  while (! docker stats --no-stream ); do
+    # Docker takes a few seconds to initialize
+    echo "Waiting for Docker to launch..."
+    sleep 3
+  done
+fi
+
 if ! docker network inspect tfb >/dev/null 2>&1; then
   docker network create tfb >/dev/null
 fi

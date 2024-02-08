@@ -24,9 +24,8 @@ final case class Fortune(id: Int, message: String)
 object Queries {
   def unapply(params: Map[String, Seq[String]]): Option[Int] =
     Some(params.getOrElse("queries", Nil).headOption match {
-      case None => 1
-      case Some(x) =>
-        Math.max(1, Math.min(500, scala.util.Try(x.toInt).getOrElse(1)))
+      case None    => 1
+      case Some(x) => Math.max(1, Math.min(500, scala.util.Try(x.toInt).getOrElse(1)))
     })
 }
 
@@ -37,18 +36,18 @@ object WebServer extends IOApp with Http4sDsl[IO] {
   ): Resource[IO, DatabaseService] = {
     for {
       executor <- Resource(IO {
-        val pool = Executors.newFixedThreadPool(poolSize)
-        (pool, IO(pool.shutdown()))
-      })
-      ctx <- Resource.fromAutoCloseable(IO(new PostgresJAsyncContext(
-        LowerCase,
-        LoadConfig("ctx")
-          .withValue("host", ConfigValueFactory.fromAnyRef(host))
-          .withValue(
-            "maxActiveConnections",
-            ConfigValueFactory.fromAnyRef(poolSize)
-          )
-      )))
+                    val pool = Executors.newFixedThreadPool(poolSize)
+                    (pool, IO(pool.shutdown()))
+                  })
+      ctx      <- Resource.fromAutoCloseable(IO(new PostgresJAsyncContext(
+                    LowerCase,
+                    LoadConfig("ctx")
+                      .withValue("host", ConfigValueFactory.fromAnyRef(host))
+                      .withValue(
+                        "maxActiveConnections",
+                        ConfigValueFactory.fromAnyRef(poolSize)
+                      )
+                  )))
     } yield new DatabaseService(ctx, executor)
   }
 
@@ -84,14 +83,14 @@ object WebServer extends IOApp with Http4sDsl[IO] {
       case GET -> Root / "fortunes" =>
         Ok(for {
           oldFortunes <- db.getFortunes()
-          newFortunes = getSortedFortunes(oldFortunes)
+          newFortunes  = getSortedFortunes(oldFortunes)
         } yield html.index(newFortunes))
 
       case GET -> Root / "updates" :? Queries(numQueries) =>
         Ok(for {
-          worlds <- db.getWorlds(numQueries)
+          worlds    <- db.getWorlds(numQueries)
           newWorlds <- db.getNewWorlds(worlds)
-          _ <- db.updateWorlds(newWorlds)
+          _         <- db.updateWorlds(newWorlds)
         } yield newWorlds.asJson)
     })
 
@@ -106,10 +105,10 @@ object WebServer extends IOApp with Http4sDsl[IO] {
   // Entry point when starting service
   override def run(args: List[String]): IO[ExitCode] =
     (for {
-      db <- makeDatabaseService(
-        args.headOption.getOrElse("localhost"),
-        sys.env.get("DB_POOL_SIZE").map(_.toInt).getOrElse(64)
-      )
+      db     <- makeDatabaseService(
+                  args.headOption.getOrElse("localhost"),
+                  sys.env.get("DB_POOL_SIZE").map(_.toInt).getOrElse(64)
+                )
       server <- startServer(service(db))
     } yield server)
       .use(_ => IO.never)
